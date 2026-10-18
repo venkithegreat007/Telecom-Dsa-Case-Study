@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Telecom Operations Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #38bdf8; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #94a3b8; font-size: 0.9rem; margin-bottom: 25px; }
+        .container { display: grid; grid-template-columns: 420px 1fr; gap: 20px; max-width: 1400px; margin: 0 auto; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 15px; }
+        .card h3 { margin-top: 0; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 8px; font-size: 1rem; }
+        label { display: block; margin-top: 8px; font-size: 0.8rem; color: #cbd5e1; }
+        input, select { width: 100%; padding: 7px; margin-top: 4px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 0.85rem; }
+        button { width: 100%; padding: 8px; margin-top: 10px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.2s; font-size: 0.85rem; }
+        button:hover { background: #0369a1; }
+        button.secondary { background: #475569; }
+        button.secondary:hover { background: #334155; }
+        canvas { background: #0b0f19; border: 1px solid #334155; border-radius: 8px; width: 100%; height: 550px; display: block; cursor: crosshair; }
+        .results { margin-top: 10px; background: #0f172a; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 0.78rem; border: 1px solid #334155; max-height: 140px; overflow-y: auto; color: #38bdf8; }
+        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; }
+        .connected { background: #166534; color: #bbf7d0; }
+        .disconnected { background: #991b1b; color: #fecaca; }
+        .instruction { font-size: 0.8rem; color: #fbbf24; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>Telecom Network Operations Center</h1>
+    <div class="subtitle">Synced Java Backend Integration (KD-Tree, HyperLogLog, Dijkstra, Kruskal's MST)</div>
+
+    <div class="container">
+        <div>
+            <div id="connectionStatus" class="status-badge disconnected">Java Server: Disconnected</div>
+
+            <!-- Module 1: KD-Tree Spatial Lookup -->
+            <div class="card">
+                <h3>1. KD-Tree Spatial Indexing</h3>
+                <div class="instruction">💡 Click anywhere on the map to test exact coordinates!</div>
+                <label>User Latitude (X):</label>
+                <input type="number" id="lat" value="11.0100" step="0.0001">
+                <label>User Longitude (Y):</label>
+                <input type="number" id="lon" value="76.9600" step="0.0001">
+                <button onclick="runKDTree()">Find Nearest Tower (KD-Tree)</button>
+                <div class="results" id="kdResult">Click map or button...</div>
+            </div>
+
+            <!-- Module 2: HyperLogLog Traffic Tracker -->
+            <div class="card">
+                <h3>2. HyperLogLog Traffic Estimator</h3>
+                <label>Subscriber Device Stream (Comma Separated):</label>
+                <input type="text" id="devices" value="IMEI_101,IMEI_102,IMEI_101,IMEI_103,IMEI_104,IMEI_102">
+                <button onclick="runHLL()" class="secondary">Estimate Unique Subscribers</button>
+                <div class="results" id="hllResult">Run traffic check...</div>
+            </div>
+
+            <!-- Module 3: Dijkstra Routing -->
+            <div class="card">
+                <h3>3. Dijkstra's Pathfinding</h3>
+                <label>Source Tower:</label>
+                <select id="startNode">
+                    <option value="Tower_Ettimadai">Tower_Ettimadai</option>
+                    <option value="Tower_Thondamuthur">Tower_Thondamuthur</option>
+                    <option value="Tower_Madukkarai">Tower_Madukkarai</option>
+                    <option value="Tower_Ukkadam">Tower_Ukkadam</option>
+                    <option value="Tower_RS_Puram">Tower_RS_Puram</option>
+                    <option value="Tower_Gandhipuram" selected>Tower_Gandhipuram</option>
+                    <option value="Tower_Peelamedu">Tower_Peelamedu</option>
+                    <option value="Tower_Saravanampatti">Tower_Saravanampatti</option>
+                </select>
+                <button onclick="runDijkstra()">Run Dijkstra Routing</button>
+                <div class="results" id="dijkstraResult">Run routing analysis...</div>
+            </div>
+
+            <!-- Module 4: Kruskal's MST -->
+            <div class="card">
+                <h3>4. Kruskal's Cabling Optimization</h3>
+                <button onclick="runMST()">Run Kruskal MST Optimization</button>
+                <div class="results" id="mstResult">Run layout optimization...</div>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 10px;">
+            <canvas id="networkCanvas" width="850" height="550"></canvas>
+        </div>
+    </div>
+
+<script>
+    // Exact same coordinates as your Java backend
+    const towers = {
+        "Tower_Ettimadai": {lat: 10.90, lon: 76.89},
+        "Tower_Thondamuthur": {lat: 11.02, lon: 76.83},
+        "Tower_Madukkarai": {lat: 10.88, lon: 76.97},
+        "Tower_Ukkadam": {lat: 10.98, lon: 76.96},
+        "Tower_RS_Puram": {lat: 11.01, lon: 76.95},
+        "Tower_Gandhipuram": {lat: 11.01, lon: 76.96},
+        "Tower_Peelamedu": {lat: 11.02, lon: 77.03},
+        "Tower_Saravanampatti": {lat: 11.07, lon: 77.00}
+    };
+
+    const links = [
+        ["Tower_Ettimadai", "Tower_Madukkarai", 4.2],
+        ["Tower_Ettimadai", "Tower_Ukkadam", 9.1],
+        ["Tower_Madukkarai", "Tower_Ukkadam", 6.5],
+        ["Tower_Ukkadam", "Tower_RS_Puram", 3.0],
+        ["Tower_RS_Puram", "Tower_Gandhipuram", 2.1],
+        ["Tower_Gandhipuram", "Tower_Peelamedu", 7.4],
+        ["Tower_Peelamedu", "Tower_Saravanampatti", 8.8],
+        ["Tower_Ettimadai", "Tower_Thondamuthur", 11.2],
+        ["Tower_Thondamuthur", "Tower_RS_Puram", 10.5]
+    ];
+
+    let state = {
+        nearestTower: "",
+        userClickLatLon: null,
+        activeMst: [],
+        dijkstraPaths: {},
+        sourceNode: ""
+    };
+
+    // Geographic bounding box for projection
+    const bounds = {
+        minLat: 10.85, maxLat: 11.10,
+        minLon: 76.80, maxLon: 77.06
+    };
+
+    function project(lat, lon, width, height) {
+        const padding = 60;
+        const x = padding + ((lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * (width - 2 * padding);
+        // North is top (invert Y)
+        const y = height - (padding + ((lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * (height - 2 * padding));
+        return {x, y};
+    }
+
+    function unproject(px, py, width, height) {
+        const padding = 60;
+        const lon = bounds.minLon + ((px - padding) / (width - 2 * padding)) * (bounds.maxLon - bounds.minLon);
+        const lat = bounds.minLat + ((height - py - padding) / (height - 2 * padding)) * (bounds.maxLat - bounds.minLat);
+        return {lat, lon};
+    }
+
+    function drawCanvas() {
+        const canvas = document.getElementById("networkCanvas");
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Grid lines
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 1;
+        for (let i = 0; i < canvas.width; i += 50) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+
+        // Draw Links
+        links.forEach(([u, v]) => {
+            let p1 = project(towers[u].lat, towers[u].lon, canvas.width, canvas.height);
+            let p2 = project(towers[v].lat, towers[v].lon, canvas.width, canvas.height);
+            let isMst = state.activeMst.some(m => (m.u === u && m.v === v) || (m.u === v && m.v === u));
+            ctx.strokeStyle = isMst ? "#38bdf8" : "#334155";
+            ctx.lineWidth = isMst ? 3 : 1;
+            ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+        });
+
+        // Draw Towers
+        for (let [id, pos] of Object.entries(towers)) {
+            let p = project(pos.lat, pos.lon, canvas.width, canvas.height);
+            let isNearest = (id === state.nearestTower);
+            let isSource = (id === state.sourceNode);
+
+            ctx.fillStyle = isNearest ? "#f43f5e" : (isSource ? "#10b981" : "#64748b");
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, isNearest || isSource ? 10 : 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#cbd5e1";
+            ctx.font = "11px sans-serif";
+            ctx.fillText(id.replace("Tower_", ""), p.x + 12, p.y + 4);
+        }
+
+        // Draw User Click Marker
+        if (state.userClickLatLon) {
+            let p = project(state.userClickLatLon.lat, state.userClickLatLon.lon, canvas.width, canvas.height);
+            ctx.fillStyle = "#fbbf24";
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#fbbf24";
+            ctx.fillText("User Position", p.x + 12, p.y + 4);
+        }
+    }
+
+    // Click handler perfectly synced with lat/lon projection
+    document.getElementById("networkCanvas").addEventListener("click", function(event) {
+        const rect = this.getBoundingClientRect();
+        const px = event.clientX - rect.left;
+        const py = event.clientY - rect.top;
+
+        const {lat, lon} = unproject(px, py, this.width, this.height);
+
+        document.getElementById("lat").value = lat.toFixed(4);
+        document.getElementById("lon").value = lon.toFixed(4);
+        state.userClickLatLon = {lat, lon};
+
+        runKDTree();
+    });
+
+    async function checkServer() {
+        try {
+            const res = await fetch("http://localhost:8080/api/mst", { method: "POST" });
+            if (res.ok) {
+                document.getElementById("connectionStatus").className = "status-badge connected";
+                document.getElementById("connectionStatus").innerText = "Java Server: Connected (Port 8080)";
+            }
+        } catch (e) {
+            document.getElementById("connectionStatus").className = "status-badge disconnected";
+            document.getElementById("connectionStatus").innerText = "Java Server: Disconnected (Start TelecomServer.java)";
+        }
+    }
+
+    async function runKDTree() {
+        const lat = parseFloat(document.getElementById("lat").value);
+        const lon = parseFloat(document.getElementById("lon").value);
+        try {
+            const res = await fetch("http://localhost:8080/api/nearest", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lat, lon })
+            });
+            const data = await res.json();
+            state.nearestTower = data.nearestTower;
+            state.userClickLatLon = {lat, lon};
+            document.getElementById("kdResult").innerText = `[Java KD-Tree Result]\nNearest Tower: ${data.nearestTower}`;
+            drawCanvas();
+        } catch (err) {
+            alert("Error connecting to Java backend.");
+        }
+    }
+
+    async function runHLL() {
+        const devices = document.getElementById("devices").value;
+        try {
+            const res = await fetch("http://localhost:8080/api/traffic", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ devices })
+            });
+            const data = await res.json();
+            document.getElementById("hllResult").innerText = `[Java HyperLogLog Result]\nEstimated Unique Subscribers: ${data.hllEstimate}`;
+        } catch (err) {
+            alert("Error connecting to Java backend.");
+        }
+    }
+
+    async function runDijkstra() {
+        const start = document.getElementById("startNode").value;
+        state.sourceNode = start;
+        try {
+            const res = await fetch("http://localhost:8080/api/dijkstra", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ start })
+            });
+            const data = await res.json();
+            state.dijkstraPaths = data.dijkstra;
+
+            let text = `[Java Dijkstra from ${start}]\n`;
+            for (let [node, dist] of Object.entries(data.dijkstra)) {
+                text += `-> To ${node}: ${dist} ms\n`;
+            }
+            document.getElementById("dijkstraResult").innerText = text;
+            drawCanvas();
+        } catch (err) {
+            alert("Error connecting to Java backend.");
+        }
+    }
+
+    async function runMST() {
+        try {
+            const res = await fetch("http://localhost:8080/api/mst", { method: "POST" });
+            const data = await res.json();
+            state.activeMst = data.mst;
+
+            let text = `[Java Kruskal's MST Result]\nTotal Cabling Cost: ${data.totalMstCost}\n`;
+            data.mst.forEach(m => {
+                text += `* Link: ${m.u} <-> ${m.v} (${m.weight})\n`;
+            });
+            document.getElementById("mstResult").innerText = text;
+            drawCanvas();
+        } catch (err) {
+            alert("Error connecting to Java backend.");
+        }
+    }
+
+    checkServer();
+    drawCanvas();
+</script>
+</body>
+</html>
